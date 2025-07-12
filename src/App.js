@@ -10,12 +10,10 @@ function App() {
   const [session, setSession] = useState(null);
 
   useEffect(() => {
-    // Get the current session
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session);
     });
 
-    // Listen for login/logout changes
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
     });
@@ -30,32 +28,60 @@ function App() {
   };
 
   return (
-    <div className="container mt-4">
-    {session ? (
-      <>
-      <div className="d-flex justify-content-between align-items-center mb-3">
-      <h3 className="text-success">Welcome, {session.user.email}</h3>
-      <button className="btn btn-outline-danger" onClick={handleLogout}>
+    <>
+    {/* Navbar */}
+    <nav className="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
+    <div className="container-fluid justify-content-between">
+    <span className="navbar-brand mb-0 h1">Skill Swap</span>
+    {session && (
+      <button className="btn btn-outline-light btn-sm" onClick={handleLogout}>
       Logout
       </button>
+    )}
+    </div>
+    </nav>
+
+    <div className="container" style={{ maxWidth: '900px' }}>
+    {session ? (
+      <>
+      {/* Profile Section */}
+      <div className="card mb-4 shadow-sm">
+      <div className="card-body">
+      <ProfileForm session={session} />
+      </div>
       </div>
 
-      {/* Profile Information */}
-      <ProfileForm session={session} />
-
-      {/* Add Offered/Wanted Skills */}
+      {/* Skill Manager */}
+      <div className="card mb-4 shadow-sm">
+      <div className="card-body">
       <SkillManager session={session} />
+      </div>
+      </div>
 
-      {/* Browse Users and Send Swap Requests */}
+      {/* Public Users List */}
+      <div className="card mb-4 shadow-sm">
+      <div className="card-body">
       <PublicUserList session={session} />
+      </div>
+      </div>
 
-      {/* Swap Inbox: View, Accept, Reject, Cancel Requests */}
+      {/* Swap Inbox */}
+      <div className="card mb-4 shadow-sm">
+      <div className="card-body">
       <SwapInbox session={session} />
+      </div>
+      </div>
       </>
     ) : (
       <Auth />
     )}
     </div>
+
+    {/* Footer */}
+    <footer className="text-center text-muted mt-5 mb-3">
+    <small>Built by Farhan • Powered by Supabase + Vercel</small>
+    </footer>
+    </>
   );
 }
 

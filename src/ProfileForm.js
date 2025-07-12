@@ -11,14 +11,30 @@ export default function ProfileForm({ session }) {
     useEffect(() => {
         const getProfile = async () => {
             setLoading(true);
+
             const { data, error } = await supabase
             .from('profiles')
             .select('*')
             .eq('id', session.user.id)
             .single();
 
+            if (error && error.code === 'PGRST116') {
+                // No row found: insert an empty profile for this user
+                await supabase.from('profiles').insert({
+                    id: session.user.id,
+                    name: '',
+                    location: '',
+                    profile_photo: '',
+                    is_public: true,
+                });
+                setLoading(false);
+                return;
+            }
+
             if (error) {
                 alert('Failed to load profile: ' + error.message);
+                setLoading(false);
+                return;
             }
 
             if (data) {
@@ -50,36 +66,59 @@ export default function ProfileForm({ session }) {
 
         setLoading(false);
         if (error) alert(error.message);
-        else alert('Profile updated successfully!');
+        else alert('✅ Profile updated successfully!');
     };
 
         return (
-            <div className="container mt-4" style={{ maxWidth: 500 }}>
-            <h2>👤 Your Profile</h2>
+            <div>
+            <h4 className="mb-3">
+            <i className="bi bi-person-circle me-2"></i>Your Profile
+            </h4>
             <form onSubmit={updateProfile}>
             <div className="mb-3">
-            <label>Name:</label>
-            <input className="form-control" value={name} onChange={(e) => setName(e.target.value)} />
-            </div>
-            <div className="mb-3">
-            <label>Location:</label>
-            <input className="form-control" value={location} onChange={(e) => setLocation(e.target.value)} />
-            </div>
-            <div className="mb-3">
-            <label>Profile Photo URL:</label>
-            <input className="form-control" value={photo} onChange={(e) => setPhoto(e.target.value)} />
-            </div>
-            <div className="form-check mb-3">
+            <label className="form-label">Full Name</label>
             <input
-            type="checkbox"
+            className="form-control"
+            placeholder="e.g. Farhan Ahmed"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            />
+            </div>
+
+            <div className="mb-3">
+            <label className="form-label">Location</label>
+            <input
+            className="form-control"
+            placeholder="e.g. Mumbai, India"
+            value={location}
+            onChange={(e) => setLocation(e.target.value)}
+            />
+            </div>
+
+            <div className="mb-3">
+            <label className="form-label">Profile Photo URL</label>
+            <input
+            className="form-control"
+            placeholder="Paste image URL"
+            value={photo}
+            onChange={(e) => setPhoto(e.target.value)}
+            />
+            </div>
+
+            <div className="form-check form-switch mb-3">
+            <input
             className="form-check-input"
+            type="checkbox"
             checked={isPublic}
             onChange={() => setIsPublic(!isPublic)}
             />
-            <label className="form-check-label">Make profile public</label>
+            <label className="form-check-label">
+            Make profile public
+            </label>
             </div>
-            <button className="btn btn-success w-100" disabled={loading}>
-            {loading ? 'Saving...' : 'Update Profile'}
+
+            <button type="submit" className="btn btn-success w-100" disabled={loading}>
+            {loading ? 'Saving...' : 'Save Profile'}
             </button>
             </form>
             </div>
