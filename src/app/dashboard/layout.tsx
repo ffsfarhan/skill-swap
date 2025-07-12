@@ -22,7 +22,6 @@ import { Search, GitFork, User, Settings, LogOut, Bell, MessageSquare, Briefcase
 import { Separator } from '@/components/ui/separator';
 import { useTheme } from "next-themes";
 import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
 
 const navItems = [
   { href: '/dashboard', label: 'Profile', icon: User },
