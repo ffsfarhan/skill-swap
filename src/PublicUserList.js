@@ -11,6 +11,7 @@ export default function PublicUserList({ session }) {
     useEffect(() => {
         const fetchUsers = async () => {
             setLoading(true);
+
             const { data, error } = await supabase
             .from('profiles')
             .select('id, name, location, profile_photo, skills(name, type)')
@@ -20,7 +21,8 @@ export default function PublicUserList({ session }) {
             if (error) {
                 alert('Failed to load users: ' + error.message);
             } else {
-                setUsers(data);
+                setUsers(data || []);
+                console.log('Fetched users:', data); // Debug
             }
 
             setLoading(false);
@@ -48,17 +50,19 @@ export default function PublicUserList({ session }) {
         if (error) {
             alert('Error sending request: ' + error.message);
         } else {
-            alert('Swap request sent!');
+            alert('✅ Swap request sent!');
             setOfferedSkill('');
             setRequestedSkill('');
         }
     };
 
-    const filteredUsers = users.filter(user =>
+    const filteredUsers = filterText
+    ? users.filter(user =>
     user.skills?.some(skill =>
     skill.name.toLowerCase().includes(filterText)
     )
-    );
+    )
+    : users;
 
     return (
         <div>
@@ -66,7 +70,7 @@ export default function PublicUserList({ session }) {
         <i className="bi bi-people-fill me-2"></i>Browse Public Users
         </h4>
 
-        {/* Skill Search */}
+        {/* Skill Search Bar */}
         <div className="mb-3">
         <input
         type="text"
@@ -77,7 +81,7 @@ export default function PublicUserList({ session }) {
         />
         </div>
 
-        {/* Your swap details */}
+        {/* Your swap skill offer/request */}
         <div className="row g-2 mb-3">
         <div className="col-md-6">
         <input
@@ -97,6 +101,7 @@ export default function PublicUserList({ session }) {
         </div>
         </div>
 
+        {/* User list display */}
         {loading ? (
             <p>Loading users...</p>
         ) : filteredUsers.length === 0 ? (
@@ -105,14 +110,19 @@ export default function PublicUserList({ session }) {
             <ul className="list-group">
             {filteredUsers.map((user) => (
                 <li key={user.id} className="list-group-item">
-                <div className="d-flex justify-content-between align-items-center">
+                <div className="d-flex justify-content-between align-items-start mb-1">
                 <div>
                 <strong>{user.name}</strong>{' '}
                 <span className="text-muted small">({user.location})</span>
                 <div className="small mt-1">
                 Skills:{' '}
                 {user.skills?.map((skill, i) => (
-                    <span key={i} className={`badge me-1 ${skill.type === 'offered' ? 'bg-success' : 'bg-primary'}`}>
+                    <span
+                    key={i}
+                    className={`badge me-1 ${
+                        skill.type === 'offered' ? 'bg-success' : 'bg-primary'
+                    }`}
+                    >
                     {skill.name}
                     </span>
                 ))}
