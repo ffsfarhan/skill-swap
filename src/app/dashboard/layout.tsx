@@ -18,14 +18,32 @@ import {
 } from '@/components/ui/sidebar';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { Search, GitFork, User, Settings, LogOut, Bell, MessageSquare, Briefcase } from 'lucide-react';
+import { Search, GitFork, User, Settings, LogOut, Bell, MessageSquare, Briefcase, Moon, Sun } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
+import { useTheme } from "next-themes";
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 
 const navItems = [
   { href: '/dashboard', label: 'Profile', icon: User },
   { href: '/dashboard/browse', label: 'Browse Skills', icon: Search },
   { href: '/dashboard/swaps', label: 'My Swaps', icon: GitFork },
 ];
+
+const ThemeSwitcher = () => {
+    const { theme, setTheme } = useTheme();
+    return (
+        <div className="flex items-center space-x-2">
+            <Sun className="h-5 w-5"/>
+            <Switch
+                id="theme-switch"
+                checked={theme === 'dark'}
+                onCheckedChange={(checked) => setTheme(checked ? 'dark' : 'light')}
+            />
+            <Moon className="h-5 w-5"/>
+        </div>
+    );
+}
 
 export default function DashboardLayout({
   children,
@@ -91,6 +109,7 @@ export default function DashboardLayout({
                 </h1>
             </div>
             <div className="flex items-center gap-4">
+                <ThemeSwitcher />
                 <Button variant="ghost" size="icon">
                     <Bell className="h-5 w-5" />
                     <span className="sr-only">Notifications</span>

@@ -1,18 +1,24 @@
 'use client';
+import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { swapRequests, currentUser, users } from '@/lib/mock-data';
+import { swapRequests as initialSwapRequests, currentUser } from '@/lib/mock-data';
 import type { SwapRequest } from '@/lib/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { ArrowDown, Check, X, Trash2 } from 'lucide-react';
 import Image from 'next/image';
 import { formatDistanceToNow } from 'date-fns';
+import { useToast } from "@/hooks/use-toast";
 
-const SwapCard = ({ swap, perspective }: { swap: SwapRequest, perspective: 'incoming' | 'outgoing' | 'active' }) => {
-  const otherUser = perspective === 'incoming' ? swap.fromUser : swap.toUser;
-  const youAre = perspective === 'outgoing' || (perspective === 'active' && swap.fromUser.id === currentUser.id) ? 'fromUser' : 'toUser';
+const SwapCard = ({ swap, onUpdateStatus }: { swap: SwapRequest, onUpdateStatus: (swapId: string, status: SwapRequest['status']) => void }) => {
+  const isIncoming = swap.toUser.id === currentUser.id;
+  const otherUser = isIncoming ? swap.fromUser : swap.toUser;
   
+  const handleAccept = () => onUpdateStatus(swap.id, 'accepted');
+  const handleReject = () => onUpdateStatus(swap.id, 'rejected');
+  const handleCancel = () => onUpdateStatus(swap.id, 'cancelled');
+
   return (
     <Card className="hover:shadow-md transition-shadow flex flex-col">
       <CardHeader>
@@ -31,30 +37,30 @@ const SwapCard = ({ swap, perspective }: { swap: SwapRequest, perspective: 'inco
       </CardHeader>
       <CardContent className="space-y-2 flex-grow">
         <p className="text-sm text-muted-foreground">
-          {youAre === 'toUser' ? `${otherUser.name} wants your...` : 'You requested their...'}
+          {isIncoming ? `${otherUser.name} wants your...` : 'You requested their...'}
         </p>
-        <div className="font-semibold p-2 bg-accent/30 rounded-md text-center">{swap.wantedSkill.name}</div>
+        <div className="font-semibold p-2 bg-accent/30 rounded-md text-center">{isIncoming ? swap.wantedSkill.name : swap.offeredSkill.name}</div>
         <div className="flex justify-center items-center my-1">
             <ArrowDown className="h-5 w-5 text-muted-foreground" />
         </div>
         <p className="text-sm text-muted-foreground">
-          {youAre === 'toUser' ? '...in exchange for their:' : '...in exchange for your:'}
+          {isIncoming ? '...in exchange for their:' : '...in exchange for your:'}
         </p>
-        <div className="font-semibold p-2 bg-secondary rounded-md text-center">{swap.offeredSkill.name}</div>
+        <div className="font-semibold p-2 bg-secondary rounded-md text-center">{isIncoming ? swap.offeredSkill.name : swap.wantedSkill.name}</div>
       </CardContent>
       {swap.status === 'pending' && (
         <CardFooter className="flex gap-2">
-          {perspective === 'incoming' ? (
+          {isIncoming ? (
             <>
-              <Button size="sm" variant="outline" className="w-full">
+              <Button size="sm" variant="outline" className="w-full" onClick={handleReject}>
                 <X className="mr-2 h-4 w-4" /> Reject
               </Button>
-              <Button size="sm" className="w-full">
+              <Button size="sm" className="w-full" onClick={handleAccept}>
                 <Check className="mr-2 h-4 w-4" /> Accept
               </Button>
             </>
           ) : (
-            <Button size="sm" variant="destructive" className="w-full">
+            <Button size="sm" variant="destructive" className="w-full" onClick={handleCancel}>
               <Trash2 className="mr-2 h-4 w-4" /> Cancel
             </Button>
           )}
@@ -71,6 +77,17 @@ const SwapCard = ({ swap, perspective }: { swap: SwapRequest, perspective: 'inco
 
 
 export default function SwapsPage() {
+  const [swapRequests, setSwapRequests] = useState<SwapRequest[]>(initialSwapRequests);
+  const { toast } = useToast();
+
+  const handleUpdateStatus = (swapId: string, status: SwapRequest['status']) => {
+    setSwapRequests(prev => prev.map(req => req.id === swapId ? {...req, status} : req));
+    toast({
+        title: `Request ${status}`,
+        description: `The swap request has been ${status}.`
+    });
+  }
+  
   const incomingRequests = swapRequests.filter(
     (req) => req.toUser.id === currentUser.id && req.status === 'pending'
   );
@@ -97,7 +114,7 @@ export default function SwapsPage() {
         <TabsContent value="incoming">
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 mt-4">
             {incomingRequests.length > 0 ? (
-              incomingRequests.map(swap => <SwapCard key={swap.id} swap={swap} perspective="incoming" />)
+              incomingRequests.map(swap => <SwapCard key={swap.id} swap={swap} onUpdateStatus={handleUpdateStatus} />)
             ) : (
               <p className="text-muted-foreground col-span-full text-center py-8">No incoming requests.</p>
             )}
@@ -106,7 +123,7 @@ export default function SwapsPage() {
         <TabsContent value="outgoing">
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 mt-4">
             {outgoingRequests.length > 0 ? (
-              outgoingRequests.map(swap => <SwapCard key={swap.id} swap={swap} perspective="outgoing" />)
+              outgoingRequests.map(swap => <SwapCard key={swap.id} swap={swap} onUpdateStatus={handleUpdateStatus} />)
             ) : (
               <p className="text-muted-foreground col-span-full text-center py-8">No outgoing requests.</p>
             )}
@@ -115,7 +132,7 @@ export default function SwapsPage() {
         <TabsContent value="active">
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 mt-4">
              {activeSwaps.length > 0 ? (
-              activeSwaps.map(swap => <SwapCard key={swap.id} swap={swap} perspective="active" />)
+              activeSwaps.map(swap => <SwapCard key={swap.id} swap={swap} onUpdateStatus={handleUpdateStatus} />)
             ) : (
               <p className="text-muted-foreground col-span-full text-center py-8">No active swaps.</p>
             )}

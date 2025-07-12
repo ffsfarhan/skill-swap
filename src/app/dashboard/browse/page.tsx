@@ -7,11 +7,15 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { users } from '@/lib/mock-data';
+import type { User } from '@/lib/types';
 import { Search, MapPin } from 'lucide-react';
 import Image from 'next/image';
+import { RequestSwapDialog } from '@/components/request-swap-dialog';
 
 export default function BrowsePage() {
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [isSwapDialogOpen, setIsSwapDialogOpen] = useState(false);
 
   const filteredUsers = users.filter(user =>
     user.id !== '1' && user.isPublic && (
@@ -19,6 +23,11 @@ export default function BrowsePage() {
       user.skillsOffered.some(skill => skill.name.toLowerCase().includes(searchTerm.toLowerCase()))
     )
   );
+  
+  const handleRequestSwap = (user: User) => {
+    setSelectedUser(user);
+    setIsSwapDialogOpen(true);
+  }
 
   return (
     <div className="space-y-8">
@@ -66,7 +75,10 @@ export default function BrowsePage() {
               </div>
             </CardContent>
             <CardFooter>
-              <Button className="w-full bg-gradient-to-r from-primary to-purple-600 text-white hover:opacity-90 transition-opacity">
+              <Button 
+                className="w-full bg-gradient-to-r from-primary to-purple-600 text-white hover:opacity-90 transition-opacity"
+                onClick={() => handleRequestSwap(user)}
+              >
                 Request Swap
               </Button>
             </CardFooter>
@@ -78,6 +90,14 @@ export default function BrowsePage() {
             <p className="text-muted-foreground">No users found for "{searchTerm}". Try another search.</p>
           </div>
         )}
+
+      {selectedUser && (
+        <RequestSwapDialog 
+            open={isSwapDialogOpen}
+            onOpenChange={setIsSwapDialogOpen}
+            targetUser={selectedUser}
+        />
+      )}
     </div>
   );
 }

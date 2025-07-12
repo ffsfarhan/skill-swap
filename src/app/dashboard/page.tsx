@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import { currentUser } from '@/lib/mock-data';
-import type { Skill } from '@/lib/types';
+import type { Skill, User } from '@/lib/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,6 +12,9 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Pen, PlusCircle, Wand2, MapPin, Calendar, X } from 'lucide-react';
 import { SuggestSkillsDialog } from '@/components/suggest-skills-dialog';
+import { AddSkillDialog } from '@/components/add-skill-dialog';
+import { EditProfileDialog } from '@/components/edit-profile-dialog';
+import { useToast } from "@/hooks/use-toast";
 import {
   CodeIcon,
   DesignIcon,
@@ -28,18 +31,20 @@ const skillIcons: Record<Skill['category'], React.ElementType> = {
   Other: OtherIcon,
 };
 
-const SkillBadge = ({ skill }: { skill: Skill }) => {
+const SkillBadge = ({ skill, onRemove }: { skill: Skill; onRemove: () => void; }) => {
   const Icon = skillIcons[skill.category] || OtherIcon;
   return (
     <Badge variant="outline" className="py-2 px-3 text-sm flex items-center gap-2 transition-colors hover:bg-accent/20">
       <Icon className="h-4 w-4 text-primary" />
       <span>{skill.name}</span>
-      <button className="ml-2 opacity-50 hover:opacity-100"><X className="h-3 w-3"/></button>
+      <button className="ml-2 opacity-50 hover:opacity-100" onClick={onRemove} title={`Remove ${skill.name}`}>
+          <X className="h-3 w-3"/>
+      </button>
     </Badge>
   );
 };
 
-const SkillsList = ({ title, skills, onAdd, onSuggest }: { title: string; skills: Skill[]; onAdd: () => void; onSuggest: () => void;}) => (
+const SkillsList = ({ title, skills, onAdd, onSuggest, onRemove }: { title: string; skills: Skill[]; onAdd: () => void; onSuggest: () => void; onRemove: (skillId: string) => void;}) => (
     <Card>
         <CardHeader>
             <CardTitle className="flex justify-between items-center">
@@ -50,7 +55,7 @@ const SkillsList = ({ title, skills, onAdd, onSuggest }: { title: string; skills
             </CardTitle>
         </CardHeader>
         <CardContent className="flex flex-wrap gap-2">
-            {skills.map(skill => <SkillBadge key={skill.id} skill={skill} />)}
+            {skills.map(skill => <SkillBadge key={skill.id} skill={skill} onRemove={() => onRemove(skill.id)}/>)}
             <Button variant="outline" className="border-dashed" onClick={onAdd}>
                 <PlusCircle className="mr-2 h-4 w-4" /> Add Skill
             </Button>
@@ -59,30 +64,66 @@ const SkillsList = ({ title, skills, onAdd, onSuggest }: { title: string; skills
 );
 
 export default function DashboardPage() {
+    const { toast } = useToast();
     const [user, setUser] = useState(currentUser);
     const [isSuggestingSkills, setIsSuggestingSkills] = useState(false);
-    const [suggestionType, setSuggestionType] = useState<'offered' | 'wanted'>('offered');
+    const [isAddingSkill, setIsAddingSkill] = useState(false);
+    const [isEditingProfile, setIsEditingProfile] = useState(false);
+    const [skillListType, setSkillListType] = useState<'offered' | 'wanted'>('offered');
     
     const handleTogglePrivacy = (isPublic: boolean) => {
         setUser(prev => ({...prev, isPublic}));
+        toast({
+            title: "Privacy updated",
+            description: `Your profile is now ${isPublic ? 'public' : 'private'}.`,
+        });
     };
 
     const handleOpenSuggest = (type: 'offered' | 'wanted') => {
-        setSuggestionType(type);
+        setSkillListType(type);
         setIsSuggestingSkills(true);
     }
     
-    const handleAddSkill = (skillName: string) => {
+    const handleOpenAddSkill = (type: 'offered' | 'wanted') => {
+        setSkillListType(type);
+        setIsAddingSkill(true);
+    }
+
+    const handleAddSkill = (skillName: string, category: Skill['category']) => {
         const newSkill: Skill = {
             id: (Math.random() * 1000).toString(),
             name: skillName,
-            category: 'Other',
+            category: category,
         };
-        if(suggestionType === 'offered'){
+        if(skillListType === 'offered'){
             setUser(prev => ({...prev, skillsOffered: [...prev.skillsOffered, newSkill]}));
         } else {
             setUser(prev => ({...prev, skillsWanted: [...prev.skillsWanted, newSkill]}));
         }
+        toast({
+            title: "Skill Added!",
+            description: `"${skillName}" has been added to your skills.`,
+        });
+    }
+
+    const handleRemoveSkill = (skillId: string, type: 'offered' | 'wanted') => {
+        if(type === 'offered'){
+            setUser(prev => ({...prev, skillsOffered: prev.skillsOffered.filter(s => s.id !== skillId)}));
+        } else {
+            setUser(prev => ({...prev, skillsWanted: prev.skillsWanted.filter(s => s.id !== skillId)}));
+        }
+        toast({
+            title: "Skill Removed",
+            variant: "destructive"
+        });
+    }
+    
+    const handleUpdateProfile = (updatedProfile: Partial<User>) => {
+        setUser(prev => ({...prev, ...updatedProfile}));
+        toast({
+            title: "Profile Updated",
+            description: "Your profile information has been saved.",
+        });
     }
 
   return (
@@ -107,7 +148,9 @@ export default function DashboardPage() {
               )}
             </div>
             <div className="flex items-center gap-2 self-end pb-2">
-                <Button variant="outline"><Pen className="mr-2 h-4 w-4"/>Edit Profile</Button>
+                <Button variant="outline" onClick={() => setIsEditingProfile(true)}>
+                    <Pen className="mr-2 h-4 w-4"/>Edit Profile
+                </Button>
             </div>
           </div>
         </CardContent>
@@ -115,8 +158,8 @@ export default function DashboardPage() {
 
       <div className="grid md:grid-cols-3 gap-6">
         <div className="md:col-span-2 space-y-6">
-            <SkillsList title="Skills I Offer" skills={user.skillsOffered} onAdd={() => {}} onSuggest={() => handleOpenSuggest('offered')} />
-            <SkillsList title="Skills I Want" skills={user.skillsWanted} onAdd={() => {}} onSuggest={() => handleOpenSuggest('wanted')} />
+            <SkillsList title="Skills I Offer" skills={user.skillsOffered} onAdd={() => handleOpenAddSkill('offered')} onSuggest={() => handleOpenSuggest('offered')} onRemove={(skillId) => handleRemoveSkill(skillId, 'offered')}/>
+            <SkillsList title="Skills I Want" skills={user.skillsWanted} onAdd={() => handleOpenAddSkill('wanted')} onSuggest={() => handleOpenSuggest('wanted')} onRemove={(skillId) => handleRemoveSkill(skillId, 'wanted')}/>
         </div>
         <div className="space-y-6">
             <Card>
@@ -154,8 +197,21 @@ export default function DashboardPage() {
       <SuggestSkillsDialog
         open={isSuggestingSkills}
         onOpenChange={setIsSuggestingSkills}
-        existingSkills={suggestionType === 'offered' ? user.skillsOffered.map(s => s.name) : user.skillsWanted.map(s => s.name)}
+        existingSkills={skillListType === 'offered' ? user.skillsOffered.map(s => s.name) : user.skillsWanted.map(s => s.name)}
+        onAddSkill={(skillName) => handleAddSkill(skillName, 'Other')}
+      />
+
+      <AddSkillDialog 
+        open={isAddingSkill}
+        onOpenChange={setIsAddingSkill}
         onAddSkill={handleAddSkill}
+      />
+
+      <EditProfileDialog
+        open={isEditingProfile}
+        onOpenChange={setIsEditingProfile}
+        user={user}
+        onSave={handleUpdateProfile}
       />
     </div>
   );
