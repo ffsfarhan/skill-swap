@@ -33,23 +33,28 @@ export default function AdminPage() {
         }
     }, [user, loading, router]);
 
-    const toggleUserBan = (userId: string) => {
-        setUsers(currentUsers =>
-            currentUsers.map(u => {
-                if (u.id === userId) {
-                    const wasBanned = u.isBanned;
-                    toast({
-                        title: wasBanned ? 'User Unbanned' : 'User Banned',
-                        description: `${u.name} has been ${wasBanned ? 'unbanned' : 'banned'}.`,
-                        variant: wasBanned ? 'default' : 'destructive',
-                    });
-                    return { ...u, isBanned: !wasBanned };
-                }
-                return u;
-            })
-        );
-    };
+    const handleToggleUserBan = (userId: string) => {
+        let userName = '';
+        let wasBanned = false;
+        
+        const updatedUsers = users.map(u => {
+            if (u.id === userId) {
+                userName = u.name;
+                wasBanned = !!u.isBanned;
+                return { ...u, isBanned: !u.isBanned };
+            }
+            return u;
+        });
 
+        setUsers(updatedUsers);
+
+        toast({
+            title: wasBanned ? 'User Unbanned' : 'User Banned',
+            description: `${userName} has been ${wasBanned ? 'unbanned' : 'banned'}.`,
+            variant: wasBanned ? 'default' : 'destructive',
+        });
+    };
+    
     if (loading || !user || !user.isAdmin) {
         return <div className="text-center p-8">Redirecting...</div>
     }
@@ -102,7 +107,7 @@ export default function AdminPage() {
                                             </TableCell>
                                             <TableCell className="text-right">
                                                 {!u.isAdmin && (
-                                                     <Button variant="ghost" size="sm" onClick={() => toggleUserBan(u.id)}>
+                                                     <Button variant="ghost" size="sm" onClick={() => handleToggleUserBan(u.id)}>
                                                         {u.isBanned ? <ShieldCheck className="mr-2"/> : <ShieldBan className="mr-2"/>}
                                                         {u.isBanned ? 'Unban' : 'Ban'}
                                                      </Button>
