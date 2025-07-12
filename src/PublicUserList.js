@@ -6,18 +6,22 @@ export default function PublicUserList({ session }) {
     const [loading, setLoading] = useState(false);
     const [offeredSkill, setOfferedSkill] = useState('');
     const [requestedSkill, setRequestedSkill] = useState('');
+    const [filterText, setFilterText] = useState('');
 
     useEffect(() => {
         const fetchUsers = async () => {
             setLoading(true);
             const { data, error } = await supabase
             .from('profiles')
-            .select('id, name, location, profile_photo')
+            .select('id, name, location, profile_photo, skills(name, type)')
             .eq('is_public', true)
-            .neq('id', session.user.id); // exclude self
+            .neq('id', session.user.id); // exclude current user
 
-            if (error) alert('Failed to load users: ' + error.message);
-            else setUsers(data);
+            if (error) {
+                alert('Failed to load users: ' + error.message);
+            } else {
+                setUsers(data);
+            }
 
             setLoading(false);
         };
@@ -50,39 +54,77 @@ export default function PublicUserList({ session }) {
         }
     };
 
-    return (
-        <div className="container mt-5" style={{ maxWidth: 800 }}>
-        <h2>🌍 Browse Public Users</h2>
+    const filteredUsers = users.filter(user =>
+    user.skills?.some(skill =>
+    skill.name.toLowerCase().includes(filterText)
+    )
+    );
 
+    return (
+        <div>
+        <h4 className="mb-3">
+        <i className="bi bi-people-fill me-2"></i>Browse Public Users
+        </h4>
+
+        {/* Skill Search */}
         <div className="mb-3">
         <input
-        className="form-control mb-2"
+        type="text"
+        className="form-control"
+        placeholder="Search by skill (e.g., Python, Design)"
+        value={filterText}
+        onChange={(e) => setFilterText(e.target.value.toLowerCase())}
+        />
+        </div>
+
+        {/* Your swap details */}
+        <div className="row g-2 mb-3">
+        <div className="col-md-6">
+        <input
+        className="form-control"
         placeholder="Skill you offer"
         value={offeredSkill}
         onChange={(e) => setOfferedSkill(e.target.value)}
         />
+        </div>
+        <div className="col-md-6">
         <input
-        className="form-control mb-2"
+        className="form-control"
         placeholder="Skill you want"
         value={requestedSkill}
         onChange={(e) => setRequestedSkill(e.target.value)}
         />
         </div>
+        </div>
 
         {loading ? (
             <p>Loading users...</p>
-        ) : users.length === 0 ? (
-            <p>No public users found.</p>
+        ) : filteredUsers.length === 0 ? (
+            <p>No users found matching that skill.</p>
         ) : (
             <ul className="list-group">
-            {users.map((user) => (
-                <li key={user.id} className="list-group-item d-flex justify-content-between align-items-center">
+            {filteredUsers.map((user) => (
+                <li key={user.id} className="list-group-item">
+                <div className="d-flex justify-content-between align-items-center">
                 <div>
-                <strong>{user.name}</strong> {user.location && `– ${user.location}`}
+                <strong>{user.name}</strong>{' '}
+                <span className="text-muted small">({user.location})</span>
+                <div className="small mt-1">
+                Skills:{' '}
+                {user.skills?.map((skill, i) => (
+                    <span key={i} className={`badge me-1 ${skill.type === 'offered' ? 'bg-success' : 'bg-primary'}`}>
+                    {skill.name}
+                    </span>
+                ))}
                 </div>
-                <button className="btn btn-primary btn-sm" onClick={() => sendSwapRequest(user.id)}>
+                </div>
+                <button
+                className="btn btn-outline-primary btn-sm"
+                onClick={() => sendSwapRequest(user.id)}
+                >
                 Request Swap
                 </button>
+                </div>
                 </li>
             ))}
             </ul>

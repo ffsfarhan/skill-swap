@@ -2,88 +2,168 @@ import { useEffect, useState } from 'react';
 import { supabase } from './supabaseClient';
 
 export default function SwapInbox({ session }) {
-    const [incoming, setIncoming] = useState([]);
-    const [sent, setSent] = useState([]);
+    const [swaps, setSwaps] = useState([]);
+    const [feedbacks, setFeedbacks] = useState({});
+    const [loading, setLoading] = useState(false);
 
     useEffect(() => {
         const fetchSwaps = async () => {
-            const { data: incomingData } = await supabase
-            .from('swaps')
-            .select('*, sender:sender_id(name, location)')
-            .eq('receiver_id', session.user.id)
-            .order('created_at', { ascending: false });
+            setLoading(true);
 
-            const { data: sentData } = await supabase
+            const { data, error } = await supabase
             .from('swaps')
-            .select('*, receiver:receiver_id(name, location)')
-            .eq('sender_id', session.user.id)
-            .order('created_at', { ascending: false });
+            .select(`
+            id,
+            sender_id,
+            receiver_id,
+            skill_offered,
+            skill_requested,
+            status,
+            feedback,
+            profiles_sender:sender_id (name),
+                    profiles_receiver:receiver_id (name)
+                    `)
+            .or(`sender_id.eq.${session.user.id},receiver_id.eq.${session.user.id}`)
+            .order('id', { ascending: false });
 
-            setIncoming(incomingData || []);
-            setSent(sentData || []);
+            if (error) {
+                alert('Failed to load swaps: ' + error.message);
+            } else {
+                setSwaps(data);
+            }
+
+            setLoading(false);
         };
 
         fetchSwaps();
     }, [session]);
 
-    const updateStatus = async (id, newStatus) => {
-        await supabase.from('swaps').update({ status: newStatus }).eq('id', id);
-        // re-fetch
-        const { data: incomingData } = await supabase
+    const updateSwapStatus = async (id, newStatus) => {
+        const { error } = await supabase
         .from('swaps')
-        .select('*, sender:sender_id(name, location)')
-        .eq('receiver_id', session.user.id)
-        .order('created_at', { ascending: false });
-        setIncoming(incomingData || []);
+        .update({ status: newStatus })
+        .eq('id', id);
+
+        if (error) {
+            alert(error.message);
+        } else {
+            setSwaps((prev) =>
+            prev.map((swap) => (swap.id === id ? { ...swap, status: newStatus } : swap))
+            );
+        }
     };
 
-    const deleteSwap = async (id) => {
-        await supabase.from('swaps').delete().eq('id', id);
-        // re-fetch
-        const { data: sentData } = await supabase
+    const submitFeedback = async (id) => {
+        const text = feedbacks[id];
+        if (!text || text.trim() === '') return alert('Feedback cannot be empty.');
+
+        const { error } = await supabase
         .from('swaps')
-        .select('*, receiver:receiver_id(name, location)')
-        .eq('sender_id', session.user.id)
-        .order('created_at', { ascending: false });
-        setSent(sentData || []);
+        .update({ feedback: text })
+        .eq('id', id);
+
+        if (error) {
+            alert('Failed to save feedback: ' + error.message);
+        } else {
+            alert('✅ Feedback submitted!');
+            setSwaps((prev) =>
+            prev.map((s) => (s.id === id ? { ...s, feedback: text } : s))
+            );
+        }
     };
 
     return (
-        <div className="container mt-5" style={{ maxWidth: 900 }}>
-        <h2>📥 Incoming Swap Requests</h2>
-        {incoming.length === 0 ? <p>No incoming requests.</p> : (
-            <ul className="list-group mb-4">
-            {incoming.map((req) => (
-                <li key={req.id} className="list-group-item d-flex justify-content-between align-items-center">
-                <div>
-                <strong>{req.sender?.name}</strong> offers <b>{req.skill_offered}</b> and wants <b>{req.skill_requested}</b>
-                <div className="text-muted small">{req.status}</div>
-                </div>
-                {req.status === 'pending' && (
-                    <div>
-                    <button className="btn btn-success btn-sm me-2" onClick={() => updateStatus(req.id, 'accepted')}>Accept</button>
-                    <button className="btn btn-danger btn-sm" onClick={() => updateStatus(req.id, 'rejected')}>Reject</button>
-                    </div>
-                )}
-                </li>
-            ))}
-            </ul>
-        )}
+        <div>
+        <h4 className="mb-3">
+        <i className="bi bi-inbox me-2"></i>Swap Inbox
+        </h4>
 
-        <h2>📤 Sent Swap Requests</h2>
-        {sent.length === 0 ? <p>No sent requests.</p> : (
+        {loading ? (
+            <p>Loading swaps...</p>
+        ) : swaps.length === 0 ? (
+            <p>No swaps found.</p>
+        ) : (
             <ul className="list-group">
-            {sent.map((req) => (
-                <li key={req.id} className="list-group-item d-flex justify-content-between align-items-center">
-                <div>
-                You offered <b>{req.skill_offered}</b> and asked <b>{req.skill_requested}</b> from <strong>{req.receiver?.name}</strong>
-                <div className="text-muted small">{req.status}</div>
-                </div>
-                {req.status === 'pending' && (
-                    <button className="btn btn-outline-danger btn-sm" onClick={() => deleteSwap(req.id)}>Cancel</button>
-                )}
-                </li>
-            ))}
+            {swaps.map((swap) => {
+                const isSender = swap.sender_id === session.user.id;
+                const counterpartName = isSender
+                ? swap.profiles_receiver?.name
+                : swap.profiles_sender?.name;
+
+                return (
+                    <li key={swap.id} className="list-group-item">
+                    <div className="d-flex justify-content-between align-items-start mb-1">
+                    <div>
+                    <strong>{counterpartName || 'User'}</strong>
+                    <div className="small text-muted">
+                    You {isSender ? 'offered' : 'received'} <strong>{swap.skill_offered}</strong>{' '}
+                    for <strong>{swap.skill_requested}</strong>
+                        </div>
+                        <span className="badge bg-secondary me-2 mt-1">{swap.status}</span>
+                        </div>
+
+                        {/* Action buttons */}
+                        <div className="d-flex flex-column align-items-end">
+                        {swap.status === 'pending' && !isSender && (
+                            <>
+                            <button
+                            className="btn btn-sm btn-outline-success mb-1"
+                            onClick={() => updateSwapStatus(swap.id, 'accepted')}
+                            >
+                            Accept
+                            </button>
+                            <button
+                            className="btn btn-sm btn-outline-danger"
+                            onClick={() => updateSwapStatus(swap.id, 'rejected')}
+                            >
+                            Reject
+                            </button>
+                            </>
+                        )}
+
+                        {swap.status === 'pending' && isSender && (
+                            <button
+                            className="btn btn-sm btn-outline-warning"
+                            onClick={() => updateSwapStatus(swap.id, 'cancelled')}
+                            >
+                            Cancel Request
+                            </button>
+                        )}
+                        </div>
+                        </div>
+
+                        {/* Feedback form */}
+                        {swap.status === 'accepted' && isSender && !swap.feedback && (
+                            <div className="mt-2">
+                            <label className="form-label small">Leave Feedback</label>
+                            <div className="d-flex">
+                            <input
+                            className="form-control me-2"
+                            placeholder="e.g., Great session, learned a lot!"
+                            value={feedbacks[swap.id] || ''}
+                            onChange={(e) =>
+                                setFeedbacks({ ...feedbacks, [swap.id]: e.target.value })
+                            }
+                            />
+                            <button
+                            className="btn btn-primary"
+                            onClick={() => submitFeedback(swap.id)}
+                            >
+                            Submit
+                            </button>
+                            </div>
+                            </div>
+                        )}
+
+                        {/* Feedback display */}
+                        {swap.feedback && (
+                            <div className="mt-2 small text-success">
+                            <strong>Feedback:</strong> {swap.feedback}
+                            </div>
+                        )}
+                        </li>
+                );
+            })}
             </ul>
         )}
         </div>

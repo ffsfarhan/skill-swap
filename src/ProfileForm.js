@@ -7,6 +7,7 @@ export default function ProfileForm({ session }) {
     const [location, setLocation] = useState('');
     const [photo, setPhoto] = useState('');
     const [isPublic, setIsPublic] = useState(true);
+    const [availability, setAvailability] = useState('');
 
     useEffect(() => {
         const getProfile = async () => {
@@ -19,13 +20,14 @@ export default function ProfileForm({ session }) {
             .single();
 
             if (error && error.code === 'PGRST116') {
-                // No row found: insert an empty profile for this user
+                // No row: insert blank profile
                 await supabase.from('profiles').insert({
                     id: session.user.id,
                     name: '',
                     location: '',
                     profile_photo: '',
                     is_public: true,
+                    availability: '',
                 });
                 setLoading(false);
                 return;
@@ -42,6 +44,7 @@ export default function ProfileForm({ session }) {
                 setLocation(data.location || '');
                 setPhoto(data.profile_photo || '');
                 setIsPublic(data.is_public);
+                setAvailability(data.availability || '');
             }
 
             setLoading(false);
@@ -60,11 +63,12 @@ export default function ProfileForm({ session }) {
             location,
             profile_photo: photo,
             is_public: isPublic,
+            availability,
         };
 
         const { error } = await supabase.from('profiles').upsert(updates);
-
         setLoading(false);
+
         if (error) alert(error.message);
         else alert('✅ Profile updated successfully!');
     };
@@ -92,6 +96,16 @@ export default function ProfileForm({ session }) {
             placeholder="e.g. Mumbai, India"
             value={location}
             onChange={(e) => setLocation(e.target.value)}
+            />
+            </div>
+
+            <div className="mb-3">
+            <label className="form-label">Availability</label>
+            <input
+            className="form-control"
+            placeholder="e.g., Weekends, evenings"
+            value={availability}
+            onChange={(e) => setAvailability(e.target.value)}
             />
             </div>
 
