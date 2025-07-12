@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { swapRequests as initialSwapRequests, currentUser } from '@/lib/mock-data';
+import { swapRequests as initialSwapRequests } from '@/lib/mock-data';
 import type { SwapRequest } from '@/lib/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -10,9 +10,10 @@ import { ArrowDown, Check, X, Trash2 } from 'lucide-react';
 import Image from 'next/image';
 import { formatDistanceToNow } from 'date-fns';
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from '@/context/auth-context';
 
-const SwapCard = ({ swap, onUpdateStatus }: { swap: SwapRequest, onUpdateStatus: (swapId: string, status: SwapRequest['status']) => void }) => {
-  const isIncoming = swap.toUser.id === currentUser.id;
+const SwapCard = ({ swap, onUpdateStatus, currentUserId }: { swap: SwapRequest, onUpdateStatus: (swapId: string, status: SwapRequest['status']) => void, currentUserId: string }) => {
+  const isIncoming = swap.toUser.id === currentUserId;
   const otherUser = isIncoming ? swap.fromUser : swap.toUser;
   
   const handleAccept = () => onUpdateStatus(swap.id, 'accepted');
@@ -79,6 +80,9 @@ const SwapCard = ({ swap, onUpdateStatus }: { swap: SwapRequest, onUpdateStatus:
 export default function SwapsPage() {
   const [swapRequests, setSwapRequests] = useState<SwapRequest[]>(initialSwapRequests);
   const { toast } = useToast();
+  const { user: currentUser } = useAuth();
+
+  if (!currentUser) return null;
 
   const handleUpdateStatus = (swapId: string, status: SwapRequest['status']) => {
     setSwapRequests(prev => prev.map(req => req.id === swapId ? {...req, status} : req));
@@ -114,7 +118,7 @@ export default function SwapsPage() {
         <TabsContent value="incoming">
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 mt-4">
             {incomingRequests.length > 0 ? (
-              incomingRequests.map(swap => <SwapCard key={swap.id} swap={swap} onUpdateStatus={handleUpdateStatus} />)
+              incomingRequests.map(swap => <SwapCard key={swap.id} swap={swap} onUpdateStatus={handleUpdateStatus} currentUserId={currentUser.id} />)
             ) : (
               <p className="text-muted-foreground col-span-full text-center py-8">No incoming requests.</p>
             )}
@@ -123,7 +127,7 @@ export default function SwapsPage() {
         <TabsContent value="outgoing">
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 mt-4">
             {outgoingRequests.length > 0 ? (
-              outgoingRequests.map(swap => <SwapCard key={swap.id} swap={swap} onUpdateStatus={handleUpdateStatus} />)
+              outgoingRequests.map(swap => <SwapCard key={swap.id} swap={swap} onUpdateStatus={handleUpdateStatus} currentUserId={currentUser.id} />)
             ) : (
               <p className="text-muted-foreground col-span-full text-center py-8">No outgoing requests.</p>
             )}
@@ -132,7 +136,7 @@ export default function SwapsPage() {
         <TabsContent value="active">
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 mt-4">
              {activeSwaps.length > 0 ? (
-              activeSwaps.map(swap => <SwapCard key={swap.id} swap={swap} onUpdateStatus={handleUpdateStatus} />)
+              activeSwaps.map(swap => <SwapCard key={swap.id} swap={swap} onUpdateStatus={handleUpdateStatus} currentUserId={currentUser.id} />)
             ) : (
               <p className="text-muted-foreground col-span-full text-center py-8">No active swaps.</p>
             )}

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import {
   SidebarProvider,
@@ -18,16 +18,22 @@ import {
 } from '@/components/ui/sidebar';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { Search, GitFork, User, Settings, LogOut, Bell, MessageSquare, Briefcase, Moon, Sun } from 'lucide-react';
+import { Search, GitFork, User, Settings, LogOut, Bell, MessageSquare, Briefcase, Moon, Sun, ShieldCheck } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { useTheme } from "next-themes";
 import { Switch } from '@/components/ui/switch';
+import { useAuth } from '@/context/auth-context';
+import { useToast } from '@/hooks/use-toast';
 
 const navItems = [
   { href: '/dashboard', label: 'Profile', icon: User },
   { href: '/dashboard/browse', label: 'Browse Skills', icon: Search },
   { href: '/dashboard/swaps', label: 'My Swaps', icon: GitFork },
 ];
+
+const adminNavItems = [
+    { href: '/dashboard/admin', label: 'Admin Panel', icon: ShieldCheck }
+]
 
 const ThemeSwitcher = () => {
     const { theme, setTheme } = useTheme();
@@ -38,7 +44,7 @@ const ThemeSwitcher = () => {
     }, []);
 
     if (!mounted) {
-        return null;
+        return <div className="w-[76px] h-5" />; // placeholder to prevent layout shift
     }
 
     return (
@@ -60,6 +66,31 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const { user, loading, logout } = useAuth();
+  const { toast } = useToast();
+
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push('/login');
+    }
+  }, [user, loading, router]);
+  
+  const handleLogout = () => {
+      logout();
+      toast({ title: 'Logged out successfully.'})
+      router.push('/login');
+  }
+
+  if (loading || !user) {
+      return (
+          <div className="flex h-screen items-center justify-center">
+              <div className="text-xl">Loading...</div>
+          </div>
+      );
+  }
+
+  const allNavItems = user.isAdmin ? [...navItems, ...adminNavItems] : navItems;
 
   return (
     <SidebarProvider>
@@ -75,7 +106,7 @@ export default function DashboardLayout({
         </SidebarHeader>
         <SidebarContent>
           <SidebarMenu>
-            {navItems.map((item) => (
+            {allNavItems.map((item) => (
               <SidebarMenuItem key={item.href}>
                 <SidebarMenuButton
                   asChild
@@ -101,7 +132,7 @@ export default function DashboardLayout({
                     </SidebarMenuButton>
                 </SidebarMenuItem>
                 <SidebarMenuItem>
-                     <SidebarMenuButton tooltip={{children: 'Logout'}}>
+                     <SidebarMenuButton tooltip={{children: 'Logout'}} onClick={handleLogout}>
                         <LogOut />
                         <span>Logout</span>
                     </SidebarMenuButton>
@@ -114,7 +145,7 @@ export default function DashboardLayout({
             <div className="flex items-center gap-2">
                 <SidebarTrigger className="md:hidden" />
                 <h1 className="text-xl font-semibold font-headline">
-                    {navItems.find(item => pathname === item.href)?.label || 'Dashboard'}
+                    {allNavItems.find(item => pathname === item.href)?.label || 'Dashboard'}
                 </h1>
             </div>
             <div className="flex items-center gap-4">
@@ -129,9 +160,9 @@ export default function DashboardLayout({
                 </Button>
                 <Avatar>
                     <AvatarImage asChild>
-                      <Image src="https://placehold.co/40x40.png" alt="User" width={40} height={40} data-ai-hint="profile avatar" />
+                      <Image src={user.avatarUrl!} alt={user.name} width={40} height={40} data-ai-hint="profile avatar" />
                     </AvatarImage>
-                    <AvatarFallback>U</AvatarFallback>
+                    <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
                 </Avatar>
             </div>
         </header>

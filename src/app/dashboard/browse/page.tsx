@@ -11,14 +11,18 @@ import type { User } from '@/lib/types';
 import { Search, MapPin } from 'lucide-react';
 import Image from 'next/image';
 import { RequestSwapDialog } from '@/components/request-swap-dialog';
+import { useAuth } from '@/context/auth-context';
 
 export default function BrowsePage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [isSwapDialogOpen, setIsSwapDialogOpen] = useState(false);
+  const { user: currentUser } = useAuth();
+
+  if (!currentUser) return null;
 
   const filteredUsers = users.filter(user =>
-    user.id !== '1' && user.isPublic && (
+    user.id !== currentUser.id && user.isPublic && (
       user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.skillsOffered.some(skill => skill.name.toLowerCase().includes(searchTerm.toLowerCase()))
     )

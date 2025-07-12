@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import Image from 'next/image';
-import { currentUser } from '@/lib/mock-data';
 import type { Skill, User } from '@/lib/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -15,6 +14,7 @@ import { SuggestSkillsDialog } from '@/components/suggest-skills-dialog';
 import { AddSkillDialog } from '@/components/add-skill-dialog';
 import { EditProfileDialog } from '@/components/edit-profile-dialog';
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from '@/context/auth-context';
 import {
   CodeIcon,
   DesignIcon,
@@ -65,14 +65,19 @@ const SkillsList = ({ title, skills, onAdd, onSuggest, onRemove }: { title: stri
 
 export default function DashboardPage() {
     const { toast } = useToast();
-    const [user, setUser] = useState(currentUser);
+    const { user, updateUser } = useAuth();
+    // No need for local state `user`, we get it from context.
+    // const [user, setUser] = useState(currentUser); 
+    
     const [isSuggestingSkills, setIsSuggestingSkills] = useState(false);
     const [isAddingSkill, setIsAddingSkill] = useState(false);
     const [isEditingProfile, setIsEditingProfile] = useState(false);
     const [skillListType, setSkillListType] = useState<'offered' | 'wanted'>('offered');
+
+    if (!user) return null; // Or a loading spinner
     
     const handleTogglePrivacy = (isPublic: boolean) => {
-        setUser(prev => ({...prev, isPublic}));
+        updateUser({ isPublic });
         toast({
             title: "Privacy updated",
             description: `Your profile is now ${isPublic ? 'public' : 'private'}.`,
@@ -96,9 +101,9 @@ export default function DashboardPage() {
             category: category,
         };
         if(skillListType === 'offered'){
-            setUser(prev => ({...prev, skillsOffered: [...prev.skillsOffered, newSkill]}));
+            updateUser({ skillsOffered: [...user.skillsOffered, newSkill] });
         } else {
-            setUser(prev => ({...prev, skillsWanted: [...prev.skillsWanted, newSkill]}));
+            updateUser({ skillsWanted: [...user.skillsWanted, newSkill] });
         }
         toast({
             title: "Skill Added!",
@@ -108,9 +113,9 @@ export default function DashboardPage() {
 
     const handleRemoveSkill = (skillId: string, type: 'offered' | 'wanted') => {
         if(type === 'offered'){
-            setUser(prev => ({...prev, skillsOffered: prev.skillsOffered.filter(s => s.id !== skillId)}));
+            updateUser({ skillsOffered: user.skillsOffered.filter(s => s.id !== skillId) });
         } else {
-            setUser(prev => ({...prev, skillsWanted: prev.skillsWanted.filter(s => s.id !== skillId)}));
+            updateUser({ skillsWanted: user.skillsWanted.filter(s => s.id !== skillId) });
         }
         toast({
             title: "Skill Removed",
@@ -119,7 +124,7 @@ export default function DashboardPage() {
     }
     
     const handleUpdateProfile = (updatedProfile: Partial<User>) => {
-        setUser(prev => ({...prev, ...updatedProfile}));
+        updateUser(updatedProfile);
         toast({
             title: "Profile Updated",
             description: "Your profile information has been saved.",

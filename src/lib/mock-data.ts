@@ -17,6 +17,8 @@ export const users: User[] = [
   {
     id: '1',
     name: 'Alex Doe',
+    email: 'alex@example.com',
+    isAdmin: false,
     location: 'San Francisco, CA',
     avatarUrl: 'https://placehold.co/100x100.png',
     skillsOffered: [skills[0], skills[2], skills[5]],
@@ -28,6 +30,8 @@ export const users: User[] = [
   {
     id: '2',
     name: 'Jane Smith',
+    email: 'jane@example.com',
+    isAdmin: false,
     location: 'New York, NY',
     avatarUrl: 'https://placehold.co/100x100.png',
     skillsOffered: [skills[3], skills[4], skills[8]],
@@ -39,6 +43,8 @@ export const users: User[] = [
   {
     id: '3',
     name: 'Sam Wilson',
+    email: 'sam@example.com',
+    isAdmin: false,
     location: 'Chicago, IL',
     avatarUrl: 'https://placehold.co/100x100.png',
     skillsOffered: [skills[1], skills[6]],
@@ -47,9 +53,24 @@ export const users: User[] = [
     isPublic: false,
     interests: 'Business analyst who wants to learn backend development to build my own startup ideas.'
   },
+  {
+    id: '4',
+    name: 'Admin User',
+    email: 'admin@example.com',
+    isAdmin: true,
+    location: 'Control Room',
+    avatarUrl: 'https://placehold.co/100x100.png',
+    skillsOffered: [],
+    skillsWanted: [],
+    availability: '24/7',
+    isPublic: false,
+    interests: 'Overseeing the SkillHub platform.'
+  }
 ];
 
-export const currentUser: User = users[0];
+// This is no longer the single source of truth for the current user.
+// Auth context will manage the logged-in user.
+// export const currentUser: User = users[0];
 
 export const swapRequests: SwapRequest[] = [
   {

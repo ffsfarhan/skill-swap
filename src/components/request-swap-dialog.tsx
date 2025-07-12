@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -24,9 +23,9 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { GitFork, ArrowDown } from "lucide-react";
-import { currentUser } from "@/lib/mock-data";
-import type { User, Skill } from "@/lib/types";
+import type { User } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/context/auth-context";
 
 const formSchema = z.object({
   wantedSkillId: z.string({ required_error: "Please select a skill you want." }),
@@ -46,6 +45,7 @@ export function RequestSwapDialog({
   targetUser,
 }: RequestSwapDialogProps) {
   const { toast } = useToast();
+  const { user: currentUser } = useAuth();
   
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -53,6 +53,8 @@ export function RequestSwapDialog({
         message: `Hi ${targetUser.name}, I'm interested in learning one of your skills and would love to swap!`
     }
   });
+  
+  if (!currentUser) return null;
 
   function onSubmit(values: z.infer<typeof formSchema>) {
     console.log("Swap Request:", values);
