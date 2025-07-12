@@ -7,11 +7,12 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import type { User } from '@/lib/types';
-import { Search, MapPin } from 'lucide-react';
+import { Search, MapPin, ShieldBan } from 'lucide-react';
 import Image from 'next/image';
 import { RequestSwapDialog } from '@/components/request-swap-dialog';
 import { useAuth } from '@/context/auth-context';
 import { useData } from '@/context/data-context';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 export default function BrowsePage() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -69,6 +70,11 @@ export default function BrowsePage() {
                         {user.location}
                     </p>
                  )}
+                 {user.isBanned && (
+                    <Badge variant="destructive" className="mt-1">
+                      <ShieldBan className="mr-1 h-3 w-3" /> Banned
+                    </Badge>
+                  )}
                </div>
             </CardHeader>
             <CardContent className="flex-grow">
@@ -80,12 +86,26 @@ export default function BrowsePage() {
               </div>
             </CardContent>
             <CardFooter>
-              <Button 
-                className="w-full bg-gradient-to-r from-primary to-purple-600 text-white hover:opacity-90 transition-opacity"
-                onClick={() => handleRequestSwap(user)}
-              >
-                Request Swap
-              </Button>
+                <TooltipProvider>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <div className="w-full">
+                                <Button 
+                                    className="w-full bg-gradient-to-r from-primary to-purple-600 text-white hover:opacity-90 transition-opacity"
+                                    onClick={() => handleRequestSwap(user)}
+                                    disabled={!!user.isBanned}
+                                >
+                                    Request Swap
+                                </Button>
+                            </div>
+                        </TooltipTrigger>
+                        {user.isBanned && (
+                            <TooltipContent>
+                                <p>Cannot perform actions with a banned user.</p>
+                            </TooltipContent>
+                        )}
+                    </Tooltip>
+                </TooltipProvider>
             </CardFooter>
           </Card>
         ))}

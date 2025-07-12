@@ -5,18 +5,21 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { SwapRequest, SwapStatus } from '@/lib/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { ArrowDown, Check, X, Trash2, MessageSquare, Star, CircleCheck } from 'lucide-react';
+import { ArrowDown, Check, X, Trash2, MessageSquare, Star, CircleCheck, ShieldBan } from 'lucide-react';
 import Image from 'next/image';
 import { formatDistanceToNow } from 'date-fns';
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from '@/context/auth-context';
 import { useData } from '@/context/data-context';
 import { RateSwapDialog } from '@/components/rate-swap-dialog';
+import { Badge } from '@/components/ui/badge';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 const SwapCard = ({ swap, onUpdateStatus, onRateSwap, currentUserId }: { swap: SwapRequest, onUpdateStatus: (swapId: string, status: SwapStatus) => void, onRateSwap: (swapId: string, rating: number, feedback: string) => void, currentUserId: string }) => {
   const [isRating, setIsRating] = useState(false);
   const isIncoming = swap.toUser.id === currentUserId;
   const otherUser = isIncoming ? swap.fromUser : swap.toUser;
+  const otherUserIsBanned = !!otherUser.isBanned;
   
   const handleAccept = () => onUpdateStatus(swap.id, 'accepted');
   const handleReject = () => onUpdateStatus(swap.id, 'rejected');
@@ -24,6 +27,19 @@ const SwapCard = ({ swap, onUpdateStatus, onRateSwap, currentUserId }: { swap: S
   const handleComplete = () => onUpdateStatus(swap.id, 'completed');
 
   const userRated = isIncoming ? !!swap.toUserRating : !!swap.fromUserRating;
+
+  const renderButtonWithTooltip = (button: React.ReactNode, tooltipContent: string) => (
+    <TooltipProvider>
+        <Tooltip>
+            <TooltipTrigger asChild>
+                <div className="w-full">{button}</div>
+            </TooltipTrigger>
+            <TooltipContent>
+                <p>{tooltipContent}</p>
+            </TooltipContent>
+        </Tooltip>
+    </TooltipProvider>
+  )
 
   return (
     <>
@@ -36,7 +52,12 @@ const SwapCard = ({ swap, onUpdateStatus, onRateSwap, currentUserId }: { swap: S
             </AvatarImage>
             <AvatarFallback>{otherUser.name.charAt(0)}</AvatarFallback>
           </Avatar>
-          <span className="font-semibold">{otherUser.name}</span>
+          <div className='flex flex-col'>
+            <span className="font-semibold">{otherUser.name}</span>
+            {otherUserIsBanned && (
+                <Badge variant="destructive" className="w-fit"><ShieldBan className="mr-1 h-3 w-3"/>Banned</Badge>
+            )}
+          </div>
         </div>
         <CardDescription className="pt-2 text-xs">
           Requested {formatDistanceToNow(swap.createdAt, { addSuffix: true })}
@@ -59,30 +80,48 @@ const SwapCard = ({ swap, onUpdateStatus, onRateSwap, currentUserId }: { swap: S
          {swap.status === 'pending' && (
             isIncoming ? (
                 <div className="flex gap-2 w-full">
-                    <Button size="sm" variant="outline" className="w-full" onClick={handleReject}>
-                        <X className="mr-2 h-4 w-4" /> Reject
-                    </Button>
-                    <Button size="sm" className="w-full" onClick={handleAccept}>
-                        <Check className="mr-2 h-4 w-4" /> Accept
-                    </Button>
+                    {renderButtonWithTooltip(
+                        <Button size="sm" variant="outline" className="w-full" onClick={handleReject} disabled={otherUserIsBanned}>
+                            <X className="mr-2 h-4 w-4" /> Reject
+                        </Button>,
+                        otherUserIsBanned ? "Cannot reject, user is banned." : "Reject this swap"
+                    )}
+                     {renderButtonWithTooltip(
+                        <Button size="sm" className="w-full" onClick={handleAccept} disabled={otherUserIsBanned}>
+                            <Check className="mr-2 h-4 w-4" /> Accept
+                        </Button>,
+                        otherUserIsBanned ? "Cannot accept, user is banned." : "Accept this swap"
+                    )}
                 </div>
             ) : (
-                <Button size="sm" variant="destructive" className="w-full" onClick={handleCancel}>
-                    <Trash2 className="mr-2 h-4 w-4" /> Cancel Request
-                </Button>
+                 renderButtonWithTooltip(
+                    <Button size="sm" variant="destructive" className="w-full" onClick={handleCancel}>
+                        <Trash2 className="mr-2 h-4 w-4" /> Cancel Request
+                    </Button>,
+                    "Cancel your request"
+                )
             )
          )}
          {swap.status === 'accepted' && (
             <div className='w-full space-y-2'>
-                <Button variant="outline" className="w-full"><MessageSquare className="mr-2"/>Message {otherUser.name}</Button>
-                <Button variant="secondary" className="w-full" onClick={handleComplete}><CircleCheck className="mr-2"/>Mark as Completed</Button>
+                {renderButtonWithTooltip(
+                    <Button variant="outline" className="w-full" disabled={otherUserIsBanned}><MessageSquare className="mr-2"/>Message {otherUser.name}</Button>,
+                    otherUserIsBanned ? "Cannot message, user is banned." : `Message ${otherUser.name}`
+                )}
+                {renderButtonWithTooltip(
+                    <Button variant="secondary" className="w-full" onClick={handleComplete} disabled={otherUserIsBanned}><CircleCheck className="mr-2"/>Mark as Completed</Button>,
+                    otherUserIsBanned ? "Cannot complete, user is banned." : "Mark this swap as completed"
+                )}
             </div>
          )}
          {swap.status === 'completed' && (
             !userRated ? (
-                <Button className="w-full" onClick={() => setIsRating(true)}>
-                    <Star className="mr-2"/>Rate Swap
-                </Button>
+                renderButtonWithTooltip(
+                    <Button className="w-full" onClick={() => setIsRating(true)}>
+                        <Star className="mr-2"/>Rate Swap
+                    </Button>,
+                    "Rate this swap"
+                )
             ) : (
                 <p className="text-sm text-muted-foreground">You have rated this swap.</p>
             )
