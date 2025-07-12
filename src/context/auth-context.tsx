@@ -22,7 +22,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Persist user auth state
     const storedUser = localStorage.getItem('skillhub-user');
     if (storedUser) {
       setUser(JSON.parse(storedUser));
@@ -31,7 +30,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
   
   const login = async (email: string, pass: string) => {
-    // This is a mock login. In a real app, you'd call an API.
     const foundUser = mockUsers.find((u) => u.email.toLowerCase() === email.toLowerCase());
 
     if (!foundUser) {
@@ -43,19 +41,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
 
     // In a real app, you would check a hashed password.
-    // For this mock, any password works unless it's the admin password.
+    const userToLogin = { ...foundUser };
+
     if (pass === ADMIN_PASSWORD) {
-        foundUser.isAdmin = true;
+        userToLogin.isAdmin = true;
     } else {
-        foundUser.isAdmin = false; // Ensure isAdmin is reset if not using admin pass
+        userToLogin.isAdmin = false;
     }
 
-    setUser(foundUser);
-    localStorage.setItem('skillhub-user', JSON.stringify(foundUser));
+    setUser(userToLogin);
+    localStorage.setItem('skillhub-user', JSON.stringify(userToLogin));
   };
   
   const signup = async (name: string, email: string, pass: string) => {
-    // Mock signup. Check if user exists, then create a new one.
     if (mockUsers.some((u) => u.email.toLowerCase() === email.toLowerCase())) {
         throw new Error('An account with this email already exists.');
     }
@@ -74,7 +72,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         interests: 'Not set',
     };
     
-    mockUsers.push(newUser); // In a real app, this would be a DB insert.
+    mockUsers.push(newUser);
     setUser(newUser);
     localStorage.setItem('skillhub-user', JSON.stringify(newUser));
   }
