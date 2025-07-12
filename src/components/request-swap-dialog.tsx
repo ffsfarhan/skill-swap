@@ -23,9 +23,10 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { GitFork, ArrowDown } from "lucide-react";
-import type { User } from "@/lib/types";
+import type { User, Skill, SwapRequest } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/auth-context";
+import { useData } from "@/context/data-context";
 
 const formSchema = z.object({
   wantedSkillId: z.string({ required_error: "Please select a skill you want." }),
@@ -46,6 +47,7 @@ export function RequestSwapDialog({
 }: RequestSwapDialogProps) {
   const { toast } = useToast();
   const { user: currentUser } = useAuth();
+  const { addSwapRequest } = useData();
   
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -57,7 +59,30 @@ export function RequestSwapDialog({
   if (!currentUser) return null;
 
   function onSubmit(values: z.infer<typeof formSchema>) {
-    console.log("Swap Request:", values);
+    const wantedSkill = targetUser.skillsOffered.find(s => s.id === values.wantedSkillId);
+    const offeredSkill = currentUser!.skillsOffered.find(s => s.id === values.offeredSkillId);
+
+    if (!wantedSkill || !offeredSkill) {
+        toast({
+            title: "Error",
+            description: "Selected skill not found. Please try again.",
+            variant: "destructive"
+        });
+        return;
+    }
+
+    const newSwapRequest: Omit<SwapRequest, 'id'> = {
+        fromUser: currentUser!,
+        toUser: targetUser,
+        offeredSkill,
+        wantedSkill,
+        status: 'pending',
+        createdAt: new Date(),
+        message: values.message,
+    };
+    
+    addSwapRequest(newSwapRequest);
+
     toast({
         title: "Swap Request Sent!",
         description: `Your request has been sent to ${targetUser.name}.`,

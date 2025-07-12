@@ -6,18 +6,19 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/componen
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { users } from '@/lib/mock-data';
 import type { User } from '@/lib/types';
 import { Search, MapPin } from 'lucide-react';
 import Image from 'next/image';
 import { RequestSwapDialog } from '@/components/request-swap-dialog';
 import { useAuth } from '@/context/auth-context';
+import { useData } from '@/context/data-context';
 
 export default function BrowsePage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [isSwapDialogOpen, setIsSwapDialogOpen] = useState(false);
   const { user: currentUser } = useAuth();
+  const { users } = useData();
 
   if (!currentUser) return null;
 

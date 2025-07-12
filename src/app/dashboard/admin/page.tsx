@@ -4,7 +4,6 @@ import { useAuth } from '@/context/auth-context';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { users as initialUsers, swapRequests } from '@/lib/mock-data';
 import type { User, SwapRequest } from '@/lib/types';
 import {
   Table,
@@ -19,13 +18,14 @@ import { Button } from '@/components/ui/button';
 import { ShieldBan, ShieldCheck, Download } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useData } from '@/context/data-context';
 
 
 export default function AdminPage() {
     const { user, loading } = useAuth();
     const router = useRouter();
     const { toast } = useToast();
-    const [users, setUsers] = useState<User[]>(initialUsers);
+    const { users, swapRequests, updateUser: updateUserData } = useData();
 
     useEffect(() => {
         if (!loading && (!user || !user.isAdmin)) {
@@ -34,23 +34,15 @@ export default function AdminPage() {
     }, [user, loading, router]);
 
     const handleToggleUserBan = (userId: string) => {
-        let userName = '';
-        let wasBanned = false;
+        const targetUser = users.find(u => u.id === userId);
+        if (!targetUser) return;
         
-        const updatedUsers = users.map(u => {
-            if (u.id === userId) {
-                userName = u.name;
-                wasBanned = !!u.isBanned;
-                return { ...u, isBanned: !u.isBanned };
-            }
-            return u;
-        });
-
-        setUsers(updatedUsers);
+        const wasBanned = !!targetUser.isBanned;
+        updateUserData(userId, { isBanned: !wasBanned });
 
         toast({
             title: wasBanned ? 'User Unbanned' : 'User Banned',
-            description: `${userName} has been ${wasBanned ? 'unbanned' : 'banned'}.`,
+            description: `${targetUser.name} has been ${wasBanned ? 'unbanned' : 'banned'}.`,
             variant: wasBanned ? 'default' : 'destructive',
         });
     };

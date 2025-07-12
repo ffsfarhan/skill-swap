@@ -15,6 +15,7 @@ import { AddSkillDialog } from '@/components/add-skill-dialog';
 import { EditProfileDialog } from '@/components/edit-profile-dialog';
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from '@/context/auth-context';
+import { useData } from '@/context/data-context';
 import {
   CodeIcon,
   DesignIcon,
@@ -22,7 +23,7 @@ import {
   LifestyleIcon,
   OtherIcon,
 } from '@/components/icons';
-import { swapRequests } from '@/lib/mock-data';
+
 
 const skillIcons: Record<Skill['category'], React.ElementType> = {
   Tech: CodeIcon,
@@ -65,6 +66,7 @@ const SkillsList = ({ title, skills, onAdd, onSuggest, onRemove }: { title: stri
 );
 
 const UserRating = ({ userId }: { userId: string }) => {
+    const { swapRequests } = useData();
     const relevantSwaps = swapRequests.filter(
       (s) =>
         (s.toUser.id === userId || s.fromUser.id === userId) &&
@@ -95,7 +97,8 @@ const UserRating = ({ userId }: { userId: string }) => {
 
 export default function DashboardPage() {
     const { toast } = useToast();
-    const { user, updateUser } = useAuth();
+    const { user, updateUser: updateAuthUser } = useAuth();
+    const { updateUser: updateDataContextUser } = useData();
     
     const [isSuggestingSkills, setIsSuggestingSkills] = useState(false);
     const [isAddingSkill, setIsAddingSkill] = useState(false);
@@ -105,7 +108,8 @@ export default function DashboardPage() {
     if (!user) return null;
     
     const handleTogglePrivacy = (isPublic: boolean) => {
-        updateUser({ isPublic });
+        updateDataContextUser(user.id, { isPublic });
+        updateAuthUser({ isPublic }); // also update auth context user
         toast({
             title: "Privacy updated",
             description: `Your profile is now ${isPublic ? 'public' : 'private'}.`,
@@ -128,11 +132,19 @@ export default function DashboardPage() {
             name: skillName,
             category: category,
         };
+
+        let updatedUser;
         if(skillListType === 'offered'){
-            updateUser({ skillsOffered: [...user.skillsOffered, newSkill] });
+            const skillsOffered = [...user.skillsOffered, newSkill];
+            updatedUser = { ...user, skillsOffered };
+            updateDataContextUser(user.id, { skillsOffered });
         } else {
-            updateUser({ skillsWanted: [...user.skillsWanted, newSkill] });
+            const skillsWanted = [...user.skillsWanted, newSkill];
+            updatedUser = { ...user, skillsWanted };
+            updateDataContextUser(user.id, { skillsWanted });
         }
+        updateAuthUser(updatedUser);
+
         toast({
             title: "Skill Added!",
             description: `"${skillName}" has been added to your skills.`,
@@ -140,11 +152,18 @@ export default function DashboardPage() {
     }
 
     const handleRemoveSkill = (skillId: string, type: 'offered' | 'wanted') => {
+        let updatedUser;
         if(type === 'offered'){
-            updateUser({ skillsOffered: user.skillsOffered.filter(s => s.id !== skillId) });
+            const skillsOffered = user.skillsOffered.filter(s => s.id !== skillId);
+            updatedUser = { ...user, skillsOffered };
+            updateDataContextUser(user.id, { skillsOffered });
         } else {
-            updateUser({ skillsWanted: user.skillsWanted.filter(s => s.id !== skillId) });
+            const skillsWanted = user.skillsWanted.filter(s => s.id !== skillId);
+            updatedUser = { ...user, skillsWanted };
+            updateDataContextUser(user.id, { skillsWanted });
         }
+        updateAuthUser(updatedUser);
+
         toast({
             title: "Skill Removed",
             variant: "destructive"
@@ -152,7 +171,8 @@ export default function DashboardPage() {
     }
     
     const handleUpdateProfile = (updatedProfile: Partial<User>) => {
-        updateUser(updatedProfile);
+        updateDataContextUser(user.id, updatedProfile);
+        updateAuthUser(updatedProfile);
         toast({
             title: "Profile Updated",
             description: "Your profile information has been saved.",

@@ -2,7 +2,6 @@
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { swapRequests as initialSwapRequests } from '@/lib/mock-data';
 import type { SwapRequest, SwapStatus } from '@/lib/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -11,6 +10,7 @@ import Image from 'next/image';
 import { formatDistanceToNow } from 'date-fns';
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from '@/context/auth-context';
+import { useData } from '@/context/data-context';
 import { RateSwapDialog } from '@/components/rate-swap-dialog';
 
 const SwapCard = ({ swap, onUpdateStatus, onRateSwap, currentUserId }: { swap: SwapRequest, onUpdateStatus: (swapId: string, status: SwapStatus) => void, onRateSwap: (swapId: string, rating: number, feedback: string) => void, currentUserId: string }) => {
@@ -106,14 +106,14 @@ const SwapCard = ({ swap, onUpdateStatus, onRateSwap, currentUserId }: { swap: S
 
 
 export default function SwapsPage() {
-  const [swapRequests, setSwapRequests] = useState<SwapRequest[]>(initialSwapRequests);
   const { toast } = useToast();
   const { user: currentUser } = useAuth();
+  const { swapRequests, updateSwapRequest } = useData();
 
   if (!currentUser) return null;
 
   const handleUpdateStatus = (swapId: string, status: SwapStatus) => {
-    setSwapRequests(prev => prev.map(req => req.id === swapId ? {...req, status} : req));
+    updateSwapRequest(swapId, { status });
     toast({
         title: `Request ${status}`,
         description: `The swap request has been ${status}.`
@@ -121,18 +121,10 @@ export default function SwapsPage() {
   }
 
   const handleRateSwap = (swapId: string, rating: number, feedback: string) => {
-    setSwapRequests(prev => prev.map(req => {
-        if (req.id === swapId) {
-            const isCurrentUserFromUser = req.fromUser.id === currentUser.id;
-            return {
-                ...req,
-                ...(isCurrentUserFromUser
-                    ? { fromUserRating: rating, fromUserFeedback: feedback }
-                    : { toUserRating: rating, toUserFeedback: feedback }),
-            };
-        }
-        return req;
-    }));
+    const isCurrentUserFromUser = swapRequests.find(s => s.id === swapId)?.fromUser.id === currentUser.id;
+    updateSwapRequest(swapId, isCurrentUserFromUser
+        ? { fromUserRating: rating, fromUserFeedback: feedback }
+        : { toUserRating: rating, toUserFeedback: feedback });
   };
   
   const incomingRequests = swapRequests.filter(

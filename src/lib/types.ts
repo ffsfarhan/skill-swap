@@ -29,6 +29,7 @@ export interface SwapRequest {
   wantedSkill: Skill;
   status: SwapStatus;
   createdAt: Date;
+  message?: string;
   fromUserRating?: number;
   fromUserFeedback?: string;
   toUserRating?: number;

@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { User } from '@/lib/types';
-import { users as mockUsers } from '@/lib/mock-data';
+import { useData } from './data-context';
 
 interface AuthContextType {
   user: User | null;
@@ -20,17 +20,26 @@ const ADMIN_PASSWORD = 'adminpassword';
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const { findUserByEmail, addUser } = useData();
 
   useEffect(() => {
     const storedUser = localStorage.getItem('skillhub-user');
     if (storedUser) {
-      setUser(JSON.parse(storedUser));
+      // Re-fetch user from our "DB" on load to ensure data is fresh
+      const parsedUser = JSON.parse(storedUser);
+      const freshUser = findUserByEmail(parsedUser.email);
+      if (freshUser) {
+        setUser(freshUser);
+      } else {
+        // User in local storage doesn't exist in our DB anymore
+        localStorage.removeItem('skillhub-user');
+      }
     }
     setLoading(false);
-  }, []);
+  }, [findUserByEmail]);
   
   const login = async (email: string, pass: string) => {
-    const foundUser = mockUsers.find((u) => u.email.toLowerCase() === email.toLowerCase());
+    const foundUser = findUserByEmail(email);
 
     if (!foundUser) {
       throw new Error('User not found.');
@@ -54,12 +63,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
   
   const signup = async (name: string, email: string, pass: string) => {
-    if (mockUsers.some((u) => u.email.toLowerCase() === email.toLowerCase())) {
+    if (findUserByEmail(email)) {
         throw new Error('An account with this email already exists.');
     }
 
     const newUser: User = {
-        id: String(mockUsers.length + 1),
+        id: (Math.random() * 100000).toString(),
         name,
         email,
         isAdmin: false,
@@ -69,10 +78,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         skillsWanted: [],
         availability: 'Not set',
         isPublic: true,
-        interests: 'Not set',
+        interests: 'Not set yet. Please edit your profile!',
     };
     
-    mockUsers.push(newUser);
+    addUser(newUser);
     setUser(newUser);
     localStorage.setItem('skillhub-user', JSON.stringify(newUser));
   }
