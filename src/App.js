@@ -77,7 +77,7 @@ function App() {
     )}
     </div>
 
-    {/* Footer */}
+    {/*final Footer */}
     <footer className="text-center text-muted mt-5 mb-3">
     <small>Built by Farhan • Powered by Supabase + Vercel</small>
     </footer>
