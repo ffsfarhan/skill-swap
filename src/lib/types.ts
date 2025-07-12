@@ -3,6 +3,7 @@ export interface User {
   name: string;
   email: string;
   isAdmin: boolean;
+  isBanned?: boolean;
   location?: string;
   avatarUrl?: string;
   skillsOffered: Skill[];
@@ -28,4 +29,8 @@ export interface SwapRequest {
   wantedSkill: Skill;
   status: SwapStatus;
   createdAt: Date;
+  fromUserRating?: number;
+  fromUserFeedback?: string;
+  toUserRating?: number;
+  toUserFeedback?: string;
 }

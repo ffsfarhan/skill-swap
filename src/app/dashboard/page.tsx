@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Pen, PlusCircle, Wand2, MapPin, Calendar, X } from 'lucide-react';
+import { Pen, PlusCircle, Wand2, MapPin, Calendar, X, Star } from 'lucide-react';
 import { SuggestSkillsDialog } from '@/components/suggest-skills-dialog';
 import { AddSkillDialog } from '@/components/add-skill-dialog';
 import { EditProfileDialog } from '@/components/edit-profile-dialog';
@@ -22,6 +22,7 @@ import {
   LifestyleIcon,
   OtherIcon,
 } from '@/components/icons';
+import { swapRequests } from '@/lib/mock-data';
 
 const skillIcons: Record<Skill['category'], React.ElementType> = {
   Tech: CodeIcon,
@@ -63,18 +64,45 @@ const SkillsList = ({ title, skills, onAdd, onSuggest, onRemove }: { title: stri
     </Card>
 );
 
+const UserRating = ({ userId }: { userId: string }) => {
+    const relevantSwaps = swapRequests.filter(
+      (s) =>
+        (s.toUser.id === userId || s.fromUser.id === userId) &&
+        s.status === 'completed'
+    );
+  
+    const ratings = relevantSwaps.flatMap((s) => {
+        const userRatings = [];
+        if (s.toUser.id === userId && s.fromUserRating) userRatings.push(s.fromUserRating);
+        if (s.fromUser.id === userId && s.toUserRating) userRatings.push(s.toUserRating);
+        return userRatings;
+    });
+
+    if (ratings.length === 0) {
+        return <p className="text-sm text-muted-foreground">No ratings yet</p>;
+    }
+
+    const avgRating = ratings.reduce((acc, r) => acc + r, 0) / ratings.length;
+
+    return (
+        <div className="flex items-center gap-1">
+            <Star className="h-5 w-5 text-yellow-400 fill-yellow-400" />
+            <span className="font-bold">{avgRating.toFixed(1)}</span>
+            <span className="text-sm text-muted-foreground">({ratings.length} ratings)</span>
+        </div>
+    );
+};
+
 export default function DashboardPage() {
     const { toast } = useToast();
     const { user, updateUser } = useAuth();
-    // No need for local state `user`, we get it from context.
-    // const [user, setUser] = useState(currentUser); 
     
     const [isSuggestingSkills, setIsSuggestingSkills] = useState(false);
     const [isAddingSkill, setIsAddingSkill] = useState(false);
     const [isEditingProfile, setIsEditingProfile] = useState(false);
     const [skillListType, setSkillListType] = useState<'offered' | 'wanted'>('offered');
 
-    if (!user) return null; // Or a loading spinner
+    if (!user) return null;
     
     const handleTogglePrivacy = (isPublic: boolean) => {
         updateUser({ isPublic });
@@ -145,12 +173,15 @@ export default function DashboardPage() {
             </Avatar>
             <div className="pb-2 flex-grow">
               <h1 className="text-3xl font-bold font-headline">{user.name}</h1>
-              {user.location && (
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <MapPin className="h-4 w-4" />
-                  <span>{user.location}</span>
-                </div>
-              )}
+              <div className="flex items-center gap-4">
+                {user.location && (
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <MapPin className="h-4 w-4" />
+                    <span>{user.location}</span>
+                  </div>
+                )}
+                <UserRating userId={user.id} />
+              </div>
             </div>
             <div className="flex items-center gap-2 self-end pb-2">
                 <Button variant="outline" onClick={() => setIsEditingProfile(true)}>

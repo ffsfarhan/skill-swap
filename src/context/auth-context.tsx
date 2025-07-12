@@ -37,6 +37,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     if (!foundUser) {
       throw new Error('User not found.');
     }
+    
+    if (foundUser.isBanned) {
+      throw new Error('This account has been suspended.');
+    }
 
     // In a real app, you would check a hashed password.
     // For this mock, any password works unless it's the admin password.
@@ -61,13 +65,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         name,
         email,
         isAdmin: false,
+        isBanned: false,
         avatarUrl: 'https://placehold.co/100x100.png',
         skillsOffered: [],
         skillsWanted: [],
         availability: 'Not set',
         isPublic: true,
         interests: 'Not set',
-        location: 'Not set',
     };
     
     mockUsers.push(newUser); // In a real app, this would be a DB insert.
