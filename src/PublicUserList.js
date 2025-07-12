@@ -31,30 +31,34 @@ export default function PublicUserList({ session }) {
         fetchUsers();
     }, [session]);
 
-    const sendSwapRequest = async (receiverId) => {
-        if (!offeredSkill || !requestedSkill) {
-            alert("Please enter both skills");
-            return;
-        }
+const sendSwapRequest = async (receiverId) => {
+    const offered = offeredSkill.trim();
+    const requested = requestedSkill.trim();
 
-        const { error } = await supabase.from('swaps').insert([
-            {
-                sender_id: session.user.id,
-                receiver_id: receiverId,
-                skill_offered: offeredSkill,
-                skill_requested: requestedSkill,
-                status: 'pending',
-            },
-        ]);
+    if (!offered || !requested) {
+        alert("Please enter both skills");
+        return;
+    }
 
-        if (error) {
-            alert('Error sending request: ' + error.message);
-        } else {
-            alert('✅ Swap request sent!');
-            setOfferedSkill('');
-            setRequestedSkill('');
-        }
-    };
+    const { error } = await supabase.from('swaps').insert([
+        {
+            sender_id: session.user.id,
+            receiver_id: receiverId,
+            skill_offered: offered,
+            skill_requested: requested,
+            status: 'pending',
+        },
+    ]);
+
+    if (error) {
+        alert('Error sending request: ' + error.message);
+    } else {
+        alert('✅ Swap request sent!');
+        setOfferedSkill('');
+        setRequestedSkill('');
+    }
+};
+
 
     const filteredUsers = filterText
     ? users.filter(user =>
